@@ -13,7 +13,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "gh-slackdump <slack-link>",
+	Use:   "gh slackdump <slack-link>",
 	Short: "Dump Slack conversations to stdout in JSON export format",
 	Long:  "GH CLI extension that uses slackdump to dump the content of a Slack link to stdout in Slack's JSON export format.",
 	Args:  cobra.ExactArgs(1),

@@ -10,3 +10,13 @@
 `gh slackdump <slack-link>`
 
 Dumps the content of the given slack link to stdout. The output is Slack's JSON export format.
+
+## Development
+
+Build and run:
+
+```
+scripts/run <slack-link>
+```
+
+This builds the binary into `build/` and passes all arguments through to the extension.

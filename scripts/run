@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+go build -o "$ROOT_DIR/gh-slackdump" "$ROOT_DIR"
+
+gh extension remove slackdump 2>/dev/null || true
+cd "$ROOT_DIR" && gh extension install .
+
+exec gh slackdump "$@"
