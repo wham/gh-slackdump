@@ -1,22 +1,39 @@
 # gh-slackdump
 
-- GH CLI extension similar to https://github.com/rneatherway/gh-slack
-- Uses slackdump under the hood
-- Use https://github.com/github/gh-hubber-skills as an example of modern GitHub internal extension
-- Check https://github.com/wham/impact for example how to use slackdump in a Go app and sign in to GitHub Slack workspace. Preserve all the cookie auth and TLS tricks
+A [GitHub CLI](https://cli.github.com/) extension that dumps Slack conversations to stdout using [slackdump](https://github.com/rusq/slackdump). Authenticates via Safari cookies with TLS fingerprinting to access the GitHub Slack workspace.
+
+## Installation
+
+```
+gh extension install wham/gh-slackdump
+```
 
 ## Usage
 
-`gh slackdump <slack-link>`
+```
+gh slackdump <slack-link>
+```
 
-Dumps the content of the given slack link to stdout. The output is Slack's JSON export format.
+Dumps the content of the given Slack link to stdout in Slack's JSON export format.
+
+### Example
+
+```
+gh slackdump https://github-grid.enterprise.slack.com/archives/C01234ABCDE
+```
+
+## Prerequisites
+
+- [GitHub CLI](https://cli.github.com/) (`gh`)
+- Go 1.21+ (for building from source)
+- macOS with Safari signed in to the GitHub Slack workspace
 
 ## Development
 
-Build and run:
+Build, install, and run locally:
 
 ```
 scripts/run <slack-link>
 ```
 
-This builds the binary into `build/` and passes all arguments through to the extension.
+This builds the binary, installs it as a `gh` extension, and runs `gh slackdump` with the provided arguments.
