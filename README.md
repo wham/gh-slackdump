@@ -26,7 +26,7 @@ gh slackdump <slack-link>
 
 Supports channels, threads, and direct messages in both regular (`*.slack.com`) and enterprise (`*.enterprise.slack.com`) workspaces. Copy the link from Slack and pass it as the argument.
 
-![Copy Slack link](docs/link.png)
+<img src="docs/link.png" alt="Copy Slack link" width="400">
 
 The output is written to stdout by default. Use `-o` to write to a file instead.
 
