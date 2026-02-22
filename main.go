@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"strings"
@@ -14,7 +14,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var testFlag bool
+var (
+	testFlag   bool
+	outputFile string
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "gh slackdump <slack-link>",
@@ -22,10 +25,12 @@ var rootCmd = &cobra.Command{
 	Long:  "GH CLI extension that uses slackdump to dump the content of a Slack link to stdout in Slack's JSON export format.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  run,
+	SilenceUsage: true,
 }
 
 func init() {
 	rootCmd.Flags().BoolVar(&testFlag, "test", false, "Show detected User-Agent and parsed cookies, then exit")
+	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file instead of stdout")
 	rootCmd.Args = func(cmd *cobra.Command, args []string) error {
 		if testFlag {
 			return cobra.NoArgs(cmd, args)
@@ -39,6 +44,12 @@ func run(cmd *cobra.Command, args []string) error {
 		return runTest()
 	}
 
+	// When outputting to stdout, suppress all logging so only JSON is emitted.
+	// When writing to a file, log progress to stdout.
+	if outputFile == "" {
+		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})))
+	}
+
 	slackLink := args[0]
 	ctx := context.Background()
 
@@ -47,41 +58,58 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	slog.Info("authenticating", "workspace", workspaceURL)
 	provider, err := sdauth.NewSafariProvider(ctx, workspaceURL)
 	if err != nil {
-		return fmt.Errorf("authentication failed: %w", err)
+		return err
 	}
 
 	isEnterprise := strings.Contains(workspaceURL, ".enterprise.slack.com")
 	sd, err := slackdump.New(ctx, provider, slackdump.WithForceEnterprise(isEnterprise))
 	if err != nil {
-		return fmt.Errorf("creating slackdump session: %w", err)
+		return err
 	}
 
+	slog.Info("dumping conversation", "link", slackLink)
 	conv, err := sd.DumpAll(ctx, slackLink)
 	if err != nil {
-		return fmt.Errorf("dumping conversation: %w", err)
+		return err
 	}
 
-	encoder := json.NewEncoder(os.Stdout)
+	var out *os.File
+	if outputFile != "" {
+		f, err := os.Create(outputFile)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		out = f
+	} else {
+		out = os.Stdout
+	}
+
+	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(conv); err != nil {
-		return fmt.Errorf("encoding output: %w", err)
+		return err
+	}
+
+	if outputFile != "" {
+		slog.Info("output written", "file", outputFile)
 	}
 
 	return nil
 }
 
 // extractWorkspaceURL derives the workspace base URL from a Slack link.
-// e.g., "https://github-grid.enterprise.slack.com/archives/C123" -> "https://github-grid.enterprise.slack.com"
 func extractWorkspaceURL(slackLink string) (string, error) {
 	u, err := url.Parse(slackLink)
 	if err != nil {
-		return "", fmt.Errorf("parsing slack link: %w", err)
+		return "", err
 	}
 	host := u.Hostname()
 	if !strings.HasSuffix(host, ".slack.com") {
-		return "", fmt.Errorf("not a slack.com URL: %s", slackLink)
+		return "", &url.Error{Op: "parse", URL: slackLink, Err: os.ErrInvalid}
 	}
 	return u.Scheme + "://" + host, nil
 }
@@ -94,17 +122,15 @@ func runTest() error {
 	if ua == "" {
 		ua = "(Safari not found)"
 	}
-	fmt.Printf("User-Agent: %s\n\n", ua)
-	fmt.Printf("%-30s %-8s %-6s %s\n", "NAME", "SECURE", "HTTP", "VALUE (truncated)")
-	fmt.Printf("%-30s %-8s %-6s %s\n", strings.Repeat("-", 30), "------", "----", strings.Repeat("-", 40))
+	slog.Info("safari", "user-agent", ua)
 	for _, c := range cookies {
 		v := c.Value
 		if len(v) > 40 {
 			v = v[:40] + "..."
 		}
-		fmt.Printf("%-30s %-8v %-6v %s\n", c.Name, c.Secure, c.HttpOnly, v)
+		slog.Info("cookie", "name", c.Name, "secure", c.Secure, "httponly", c.HttpOnly, "value", v)
 	}
-	fmt.Printf("\nTotal: %d Slack cookies\n", len(cookies))
+	slog.Info("total", "cookies", len(cookies))
 	return nil
 }
 

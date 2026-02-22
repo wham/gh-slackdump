@@ -20,8 +20,12 @@ Dumps the content of the given Slack link to stdout in Slack's JSON export forma
 
 ```
 gh slackdump https://github-grid.enterprise.slack.com/archives/CMH59UX4P
-gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
+gh slackdump -o output.json https://myworkspace.slack.com/archives/C09036MGFJ4
 ```
+
+### Flags
+
+- `-o, --output <file>` — Write JSON output to a file instead of stdout. When set, progress is logged to stdout.
 
 ### Test cookies
 

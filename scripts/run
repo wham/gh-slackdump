@@ -6,7 +6,13 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 go build -o "$ROOT_DIR/gh-slackdump" "$ROOT_DIR"
 
-gh extension remove slackdump 2>/dev/null || true
-cd "$ROOT_DIR" && gh extension install .
+# Suppress install output unless -o is set (stdout is used for JSON output otherwise)
+if echo "$@" | grep -qE '(^| )-o( |$)|--output'; then
+  gh extension remove slackdump 2>/dev/null || true
+  cd "$ROOT_DIR" && gh extension install .
+else
+  gh extension remove slackdump > /dev/null 2>&1 || true
+  cd "$ROOT_DIR" && gh extension install . > /dev/null 2>&1
+fi
 
 exec gh slackdump "$@"
