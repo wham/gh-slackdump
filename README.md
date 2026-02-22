@@ -25,15 +25,25 @@ gh slackdump https://github-grid.enterprise.slack.com/archives/C01234ABCDE
 ## Prerequisites
 
 - [GitHub CLI](https://cli.github.com/) (`gh`)
-- Go 1.21+ (for building from source)
 - macOS with Safari signed in to the GitHub Slack workspace
 
 ## Development
 
-Build, install, and run locally:
+Build, install, and run locally (requires Go 1.21+):
 
 ```
 scripts/run <slack-link>
 ```
 
 This builds the binary, installs it as a `gh` extension, and runs `gh slackdump` with the provided arguments.
+
+## Releasing
+
+Releases are automated with [GoReleaser](https://goreleaser.com/) via GitHub Actions. To publish a new version:
+
+```
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow builds macOS binaries (amd64 + arm64) and creates a GitHub Release, enabling `gh extension install` without requiring Go.
