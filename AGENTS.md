@@ -30,6 +30,7 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 
 - Always update `README.md` when adding or changing user-facing commands, flags, or behavior
 - Always update `AGENTS.md` when changing architecture, key implementation details, or conventions
+- Always keep `--help` output up to date: when adding, removing, or changing flags, update the cobra command definition in `main.go` (including `Long`, `Example`, and flag descriptions) so that `gh slackdump --help` accurately documents all available options
 
 ## Testing
 

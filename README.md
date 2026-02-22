@@ -10,6 +10,12 @@ It authenticates via Safari's cookie storage and uses [TLS fingerprinting](https
 gh extension install wham/gh-slackdump
 ```
 
+To update to the latest version:
+
+```
+gh extension upgrade wham/gh-slackdump
+```
+
 ## Usage
 
 Sign in to your Slack workspace in **Safari** first.
@@ -38,6 +44,8 @@ gh slackdump --test
 |---|---|
 | `-o, --output <file>` | Write JSON output to a file instead of stdout. When set, progress is logged to stdout. |
 | `--test` | Show the detected Safari User-Agent and parsed Slack cookies, then exit. Useful for verifying that cookie access is working. |
+| `-v, --version` | Print the version number and exit. |
+| `-h, --help` | Show help with all available flags and usage examples. |
 
 ## Output format
 

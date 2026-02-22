@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "dev"
+
 var (
 	testFlag   bool
 	outputFile string
@@ -22,9 +24,18 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "gh slackdump <slack-link>",
 	Short: "Dump Slack conversations to stdout in JSON export format",
-	Long:  "GH CLI extension that uses slackdump to dump the content of a Slack link to stdout in Slack's JSON export format.",
-	Args:  cobra.ExactArgs(1),
-	RunE:  run,
+	Long: `GH CLI extension that uses slackdump to dump the content of a Slack link
+to stdout in Slack's JSON export format.
+
+Supports channels, threads, and direct messages in both regular (*.slack.com)
+and enterprise (*.enterprise.slack.com) workspaces. Authenticates via Safari's
+cookie storage — requires Safari to be signed in to your Slack workspace.`,
+	Example: `  gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
+  gh slackdump -o output.json https://myworkspace.enterprise.slack.com/archives/CMH59UX4P
+  gh slackdump --test`,
+	Version:      version,
+	Args:         cobra.ExactArgs(1),
+	RunE:         run,
 	SilenceUsage: true,
 }
 
