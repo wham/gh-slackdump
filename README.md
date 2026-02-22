@@ -1,10 +1,8 @@
 # gh-slackdump
 
-A [GitHub CLI](https://cli.github.com/) extension that dumps Slack conversations into Slack's [JSON export format](https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports) using [slackdump](https://github.com/rusq/slackdump). It authenticates via Safari's cookie storage and uses a [TLS fingerprinting trick](https://github.com/rusq/slackdump/discussions/526#discussioncomment-14370498) to work with enterprise Slack workspaces without triggering [security notifications](https://slack.com/help/articles/37506096763283-Understand-Slack-Security-notifications).
+A [GitHub CLI](https://cli.github.com/) extension that dumps Slack conversations into Slack's [JSON export format](https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports) using [slackdump](https://github.com/rusq/slackdump). Inspired by [gh-slack](https://github.com/rneatherway/gh-slack), but can export entire channels and DMs, not just threads.
 
-This extension is inspired by https://github.com/rneatherway/gh-slack. The key difference is that `gh-slack` can only export threads, while `gh-slackdump` can export entire channels and DMs.
-
-Currently macOS-only. Requires Safari to be signed in to your Slack workspace. File an issue to request support for other platforms or browsers.
+It authenticates via Safari's cookie storage and uses [TLS fingerprinting](https://github.com/rusq/slackdump/discussions/526#discussioncomment-14370498) to work with enterprise Slack workspaces without triggering [security notifications](https://slack.com/help/articles/37506096763283-Understand-Slack-Security-notifications). Currently macOS-only — requires Safari to be signed in to your Slack workspace.
 
 ## Installation
 
@@ -20,9 +18,11 @@ Sign in to your Slack workspace in **Safari** first.
 gh slackdump <slack-link>
 ```
 
-Supports channels, threads, and direct messages in both regular (`*.slack.com`) and enterprise (`*.enterprise.slack.com`) workspaces. The output is written to stdout by default. Use `-o` to write to a file instead.
+Supports channels, threads, and direct messages in both regular (`*.slack.com`) and enterprise (`*.enterprise.slack.com`) workspaces. Copy the link from Slack and pass it as the argument.
 
 ![Copy Slack link](docs/link.png)
+
+The output is written to stdout by default. Use `-o` to write to a file instead.
 
 ### Examples
 
@@ -38,11 +38,6 @@ gh slackdump --test
 |---|---|
 | `-o, --output <file>` | Write JSON output to a file instead of stdout. When set, progress is logged to stdout. |
 | `--test` | Show the detected Safari User-Agent and parsed Slack cookies, then exit. Useful for verifying that cookie access is working. |
-
-## Prerequisites
-
-- [GitHub CLI](https://cli.github.com/) (`gh`)
-- macOS with Safari signed in to the target Slack workspace
 
 ## Development & Releasing
 
