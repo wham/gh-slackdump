@@ -2,6 +2,8 @@
 
 A [GitHub CLI](https://cli.github.com/) extension that dumps Slack conversations into Slack's [JSON export format](https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports) using [slackdump](https://github.com/rusq/slackdump). It authenticates via Safari's cookie storage and uses a [TLS fingerprinting trick](https://github.com/rusq/slackdump/discussions/526#discussioncomment-14370498) to work with enterprise Slack workspaces without triggering [security notifications](https://slack.com/help/articles/37506096763283-Understand-Slack-Security-notifications).
 
+This extension is inspired by https://github.com/rneatherway/gh-slack. The key difference is that `gh-slack` can only export threads, while `gh-slackdump` can export entire channels and DMs.
+
 Currently macOS-only. Requires Safari to be signed in to your Slack workspace. File an issue to request support for other platforms or browsers.
 
 ## Installation
@@ -18,13 +20,15 @@ Sign in to your Slack workspace in **Safari** first.
 gh slackdump <slack-link>
 ```
 
-The output is written to stdout by default. Use `-o` to write to a file instead.
+Supports channels, threads, and direct messages in both regular (`*.slack.com`) and enterprise (`*.enterprise.slack.com`) workspaces. The output is written to stdout by default. Use `-o` to write to a file instead.
+
+![Copy Slack link](docs/link.png)
 
 ### Examples
 
 ```
 gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
-gh slackdump -o output.json https://github-grid.enterprise.slack.com/archives/CMH59UX4P
+gh slackdump -o output.json https://myworkspace.enterprise.slack.com/archives/CMH59UX4P
 gh slackdump --test
 ```
 
