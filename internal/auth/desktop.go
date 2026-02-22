@@ -265,8 +265,8 @@ func slackConfigDir() (string, error) {
 		}
 		return second, nil
 	case "linux":
-		if xdgConfigDir, found := os.LookupEnv("XDG_CONFIG_DIR"); found {
-			return filepath.Join(xdgConfigDir, "Slack"), nil
+		if xdgConfigHome, found := os.LookupEnv("XDG_CONFIG_HOME"); found {
+			return filepath.Join(xdgConfigHome, "Slack"), nil
 		}
 		return filepath.Join(home, ".config", "Slack"), nil
 	case "windows":
