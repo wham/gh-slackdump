@@ -7,7 +7,9 @@ require (
 	github.com/rusq/slack v0.9.6-0.20250408103104-dd80d1b6337f
 	github.com/rusq/slackdump/v3 v3.1.13
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/crypto v0.48.0
 	golang.org/x/net v0.50.0
+	modernc.org/sqlite v1.46.1
 )
 
 require (
@@ -58,8 +60,10 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
+	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/playwright-community/playwright-go v0.5200.1 // indirect
 	github.com/pressly/goose/v3 v3.26.0 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rusq/chttp v1.1.0 // indirect
 	github.com/rusq/fsadapter v1.1.0 // indirect
@@ -74,11 +78,14 @@ require (
 	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.9.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
+	modernc.org/libc v1.67.7 // indirect
+	modernc.org/mathutil v1.7.1 // indirect
+	modernc.org/memory v1.11.0 // indirect
 )

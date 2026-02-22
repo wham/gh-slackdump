@@ -28,8 +28,9 @@ var rootCmd = &cobra.Command{
 to stdout in Slack's JSON export format.
 
 Supports channels, threads, and direct messages in both regular (*.slack.com)
-and enterprise (*.enterprise.slack.com) workspaces. Authenticates via Safari's
-cookie storage — requires Safari to be signed in to your Slack workspace.`,
+and enterprise (*.enterprise.slack.com) workspaces. Authenticates via the
+Slack desktop app's local cookie storage — requires the Slack desktop app to
+be installed and signed in to your workspace.`,
 	Example: `  gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
   gh slackdump -o output.json https://myworkspace.enterprise.slack.com/archives/CMH59UX4P
   gh slackdump --test`,
@@ -40,7 +41,7 @@ cookie storage — requires Safari to be signed in to your Slack workspace.`,
 }
 
 func init() {
-	rootCmd.Flags().BoolVar(&testFlag, "test", false, "Show detected User-Agent and parsed cookies, then exit")
+	rootCmd.Flags().BoolVar(&testFlag, "test", false, "Show detected Slack desktop cookie, then exit")
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file instead of stdout")
 	rootCmd.Args = func(cmd *cobra.Command, args []string) error {
 		if testFlag {
@@ -70,7 +71,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	slog.Info("authenticating", "workspace", workspaceURL)
-	provider, err := sdauth.NewSafariProvider(ctx, workspaceURL)
+	provider, err := sdauth.NewDesktopProvider(ctx, workspaceURL)
 	if err != nil {
 		return err
 	}
@@ -126,22 +127,15 @@ func extractWorkspaceURL(slackLink string) (string, error) {
 }
 
 func runTest() error {
-	cookies, ua, err := sdauth.ReadSafariCookies()
+	cookie, err := sdauth.ReadDesktopCookie()
 	if err != nil {
 		return err
 	}
-	if ua == "" {
-		ua = "(Safari not found)"
+	v := cookie
+	if len(v) > 40 {
+		v = v[:40] + "..."
 	}
-	slog.Info("safari", "user-agent", ua)
-	for _, c := range cookies {
-		v := c.Value
-		if len(v) > 40 {
-			v = v[:40] + "..."
-		}
-		slog.Info("cookie", "name", c.Name, "secure", c.Secure, "httponly", c.HttpOnly, "value", v)
-	}
-	slog.Info("total", "cookies", len(cookies))
+	slog.Info("slack desktop", "cookie", v)
 	return nil
 }
 
