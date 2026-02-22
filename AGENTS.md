@@ -16,6 +16,7 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 - `main.go` — Entry point with cobra root command, flags (`--test`, `-o`), and `slog`-based logging
 - `internal/auth/safari.go` — Safari cookie auth provider with uTLS fingerprinting, binary cookie parsing, and Slack token extraction
 - `scripts/run` — Development script that builds and runs the binary directly
+- `scripts/release` — Release script that bumps the semver tag (patch/minor/major) and pushes it to trigger GoReleaser
 
 ## Key Implementation Details
 

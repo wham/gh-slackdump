@@ -84,8 +84,9 @@ scripts/run <slack-link>
 Releases are automated with [GoReleaser](https://goreleaser.com/) via GitHub Actions. To publish a new version:
 
 ```
-git tag v0.1.0
-git push origin v0.1.0
+scripts/release patch   # v0.2.0 → v0.2.1
+scripts/release minor   # v0.2.0 → v0.3.0
+scripts/release major   # v0.2.0 → v1.0.0
 ```
 
-The workflow builds macOS binaries (amd64 + arm64) and creates a GitHub Release, enabling `gh extension install` without requiring Go.
+The script reads the latest git tag, bumps the version, and pushes the new tag after confirmation. The workflow then builds macOS binaries (amd64 + arm64) and creates a GitHub Release, enabling `gh extension install` without requiring Go.
