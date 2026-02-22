@@ -10,6 +10,12 @@ It authenticates via Safari's cookie storage and uses [TLS fingerprinting](https
 gh extension install wham/gh-slackdump
 ```
 
+To update to the latest version:
+
+```
+gh extension upgrade wham/gh-slackdump
+```
+
 ## Usage
 
 Sign in to your Slack workspace in **Safari** first.
@@ -20,7 +26,7 @@ gh slackdump <slack-link>
 
 Supports channels, threads, and direct messages in both regular (`*.slack.com`) and enterprise (`*.enterprise.slack.com`) workspaces. Copy the link from Slack and pass it as the argument.
 
-![Copy Slack link](docs/link.png)
+<img src="docs/link.png" alt="Copy Slack link" width="400">
 
 The output is written to stdout by default. Use `-o` to write to a file instead.
 
@@ -38,6 +44,8 @@ gh slackdump --test
 |---|---|
 | `-o, --output <file>` | Write JSON output to a file instead of stdout. When set, progress is logged to stdout. |
 | `--test` | Show the detected Safari User-Agent and parsed Slack cookies, then exit. Useful for verifying that cookie access is working. |
+| `-v, --version` | Print the version number and exit. |
+| `-h, --help` | Show help with all available flags and usage examples. |
 
 ## Output format
 
@@ -73,11 +81,18 @@ Build and run locally (requires Go 1.21+):
 scripts/run <slack-link>
 ```
 
+Run tests:
+
+```
+scripts/test
+```
+
 Releases are automated with [GoReleaser](https://goreleaser.com/) via GitHub Actions. To publish a new version:
 
 ```
-git tag v0.1.0
-git push origin v0.1.0
+scripts/release patch   # v0.2.0 → v0.2.1
+scripts/release minor   # v0.2.0 → v0.3.0
+scripts/release major   # v0.2.0 → v1.0.0
 ```
 
-The workflow builds macOS binaries (amd64 + arm64) and creates a GitHub Release, enabling `gh extension install` without requiring Go.
+The script reads the latest git tag, bumps the version, and pushes the new tag after confirmation. The workflow then builds macOS binaries (amd64 + arm64) and creates a GitHub Release, enabling `gh extension install` without requiring Go.
