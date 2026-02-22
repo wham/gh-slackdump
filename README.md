@@ -16,10 +16,11 @@ gh slackdump <slack-link>
 
 Dumps the content of the given Slack link to stdout in Slack's JSON export format.
 
-### Example
+### Examples
 
 ```
-gh slackdump https://github-grid.enterprise.slack.com/archives/C01234ABCDE
+gh slackdump https://github-grid.enterprise.slack.com/archives/CMH59UX4P
+gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
 ```
 
 ### Test cookies

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -41,12 +42,18 @@ func run(cmd *cobra.Command, args []string) error {
 	slackLink := args[0]
 	ctx := context.Background()
 
-	provider, err := sdauth.NewSafariProvider(ctx)
+	workspaceURL, err := extractWorkspaceURL(slackLink)
+	if err != nil {
+		return err
+	}
+
+	provider, err := sdauth.NewSafariProvider(ctx, workspaceURL)
 	if err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 
-	sd, err := slackdump.New(ctx, provider, slackdump.WithForceEnterprise(true))
+	isEnterprise := strings.Contains(workspaceURL, ".enterprise.slack.com")
+	sd, err := slackdump.New(ctx, provider, slackdump.WithForceEnterprise(isEnterprise))
 	if err != nil {
 		return fmt.Errorf("creating slackdump session: %w", err)
 	}
@@ -63,6 +70,20 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// extractWorkspaceURL derives the workspace base URL from a Slack link.
+// e.g., "https://github-grid.enterprise.slack.com/archives/C123" -> "https://github-grid.enterprise.slack.com"
+func extractWorkspaceURL(slackLink string) (string, error) {
+	u, err := url.Parse(slackLink)
+	if err != nil {
+		return "", fmt.Errorf("parsing slack link: %w", err)
+	}
+	host := u.Hostname()
+	if !strings.HasSuffix(host, ".slack.com") {
+		return "", fmt.Errorf("not a slack.com URL: %s", slackLink)
+	}
+	return u.Scheme + "://" + host, nil
 }
 
 func runTest() error {

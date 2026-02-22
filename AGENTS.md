@@ -20,9 +20,10 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 ## Key Implementation Details
 
 - Authentication reads Safari's `Cookies.binarycookies` file and exchanges cookies for a Slack API token via the `/ssb/redirect` endpoint
+- The workspace URL is derived from the Slack link provided by the user
 - TLS connections use [uTLS](https://github.com/refraction-networking/utls) with `HelloSafari_Auto` to mimic Safari's TLS fingerprint
 - The User-Agent is detected from the locally installed Safari version
-- `slackdump.WithForceEnterprise(true)` is used because GitHub uses Slack Enterprise Grid
+- `slackdump.WithForceEnterprise(true)` is automatically set when the link is an `*.enterprise.slack.com` URL
 
 ## Guidelines
 

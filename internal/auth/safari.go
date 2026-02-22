@@ -23,8 +23,6 @@ import (
 	"golang.org/x/net/http2"
 )
 
-const workspaceURL = "https://github-grid.enterprise.slack.com"
-
 // SafariProvider implements auth.Provider with Safari cookie authentication
 // and TLS fingerprinting to mimic real Safari browser connections.
 type SafariProvider struct {
@@ -129,14 +127,15 @@ func ReadSafariCookies() (cookies []*http.Cookie, userAgent string, err error) {
 }
 
 // NewSafariProvider creates a new auth provider by reading Safari cookies
-// and exchanging them for a Slack API token.
-func NewSafariProvider(ctx context.Context) (*SafariProvider, error) {
+// and exchanging them for a Slack API token. The workspaceURL is the base
+// URL of the Slack workspace (e.g., "https://myteam.slack.com").
+func NewSafariProvider(ctx context.Context, workspaceURL string) (*SafariProvider, error) {
 	cookies, ua, err := ReadSafariCookies()
 	if err != nil {
 		return nil, err
 	}
 
-	token, allCookies, err := getTokenFromCookies(cookies, ua)
+	token, allCookies, err := getTokenFromCookies(workspaceURL, cookies, ua)
 	if err != nil {
 		return nil, fmt.Errorf("getting Slack token from cookies: %w", err)
 	}
@@ -144,7 +143,7 @@ func NewSafariProvider(ctx context.Context) (*SafariProvider, error) {
 	return &SafariProvider{token: token, cookies: allCookies, ua: ua}, nil
 }
 
-func getTokenFromCookies(cookies []*http.Cookie, userAgent string) (string, []*http.Cookie, error) {
+func getTokenFromCookies(workspaceURL string, cookies []*http.Cookie, userAgent string) (string, []*http.Cookie, error) {
 	if userAgent == "" {
 		userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 	}
