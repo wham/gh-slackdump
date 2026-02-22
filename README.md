@@ -35,6 +35,7 @@ The output is written to stdout by default. Use `-o` to write to a file instead.
 ```
 gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
 gh slackdump -o output.json https://myworkspace.enterprise.slack.com/archives/CMH59UX4P
+gh slackdump --from 2024-01-01 --to 2024-01-31 https://myworkspace.slack.com/archives/C09036MGFJ4
 gh slackdump --test
 ```
 
@@ -43,6 +44,8 @@ gh slackdump --test
 | Flag | Description |
 |---|---|
 | `-o, --output <file>` | Write JSON output to a file instead of stdout. When set, progress is logged to stdout. |
+| `--from <time>` | Dump only messages after this time. Accepts RFC3339 (e.g. `2024-01-02T15:04:05Z`) or date-only (`2024-01-02`). |
+| `--to <time>` | Dump only messages before this time. Accepts RFC3339 (e.g. `2024-01-31T23:59:59Z`) or date-only (`2024-01-31`). |
 | `--test` | Show the detected Safari User-Agent and parsed Slack cookies, then exit. Useful for verifying that cookie access is working. |
 | `-v, --version` | Print the version number and exit. |
 | `-h, --help` | Show help with all available flags and usage examples. |
