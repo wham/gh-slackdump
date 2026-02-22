@@ -81,6 +81,12 @@ Build and run locally (requires Go 1.21+):
 scripts/run <slack-link>
 ```
 
+Run tests:
+
+```
+scripts/test
+```
+
 Releases are automated with [GoReleaser](https://goreleaser.com/) via GitHub Actions. To publish a new version:
 
 ```
