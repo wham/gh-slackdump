@@ -107,25 +107,35 @@ func (t *safariTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-// NewSafariProvider creates a new auth provider by reading Safari cookies
-// and exchanging them for a Slack API token.
-func NewSafariProvider(ctx context.Context) (*SafariProvider, error) {
+// ReadSafariCookies reads and parses Safari's binary cookies for Slack
+// and detects the Safari User-Agent, without exchanging for a token.
+func ReadSafariCookies() (cookies []*http.Cookie, userAgent string, err error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("getting home directory: %w", err)
+		return nil, "", fmt.Errorf("getting home directory: %w", err)
 	}
 
 	safariCookiePath := filepath.Join(home, "Library", "Containers", "com.apple.Safari", "Data", "Library", "Cookies", "Cookies.binarycookies")
 	if _, err := os.Stat(safariCookiePath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("Safari cookies not found at %s", safariCookiePath)
+		return nil, "", fmt.Errorf("Safari cookies not found at %s", safariCookiePath)
 	}
 
-	cookies, err := parseCookieFile(safariCookiePath)
+	cookies, err = parseCookieFile(safariCookiePath)
 	if err != nil {
-		return nil, fmt.Errorf("parsing Safari cookies: %w", err)
+		return nil, "", fmt.Errorf("parsing Safari cookies: %w", err)
 	}
 
-	ua := detectSafariUserAgent()
+	return cookies, detectSafariUserAgent(), nil
+}
+
+// NewSafariProvider creates a new auth provider by reading Safari cookies
+// and exchanging them for a Slack API token.
+func NewSafariProvider(ctx context.Context) (*SafariProvider, error) {
+	cookies, ua, err := ReadSafariCookies()
+	if err != nil {
+		return nil, err
+	}
+
 	token, allCookies, err := getTokenFromCookies(cookies, ua)
 	if err != nil {
 		return nil, fmt.Errorf("getting Slack token from cookies: %w", err)

@@ -23,3 +23,8 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 - TLS connections use [uTLS](https://github.com/refraction-networking/utls) with `HelloSafari_Auto` to mimic Safari's TLS fingerprint
 - The User-Agent is detected from the locally installed Safari version
 - `slackdump.WithForceEnterprise(true)` is used because GitHub uses Slack Enterprise Grid
+
+## Guidelines
+
+- Always update `README.md` when adding or changing user-facing commands, flags, or behavior
+- Always update `AGENTS.md` when changing architecture, key implementation details, or conventions

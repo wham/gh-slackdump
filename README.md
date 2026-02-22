@@ -22,6 +22,14 @@ Dumps the content of the given Slack link to stdout in Slack's JSON export forma
 gh slackdump https://github-grid.enterprise.slack.com/archives/C01234ABCDE
 ```
 
+### Test cookies
+
+```
+gh slackdump --test
+```
+
+Shows the detected Safari User-Agent and parsed Slack cookies without connecting to Slack. Useful for verifying that Safari cookie access is working.
+
 ## Prerequisites
 
 - [GitHub CLI](https://cli.github.com/) (`gh`)

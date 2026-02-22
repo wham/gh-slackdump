@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	sdauth "github.com/wham/gh-slackdump/internal/auth"
 
 	"github.com/rusq/slackdump/v3"
 	"github.com/spf13/cobra"
 )
+
+var testFlag bool
 
 var rootCmd = &cobra.Command{
 	Use:   "gh slackdump <slack-link>",
@@ -20,7 +23,21 @@ var rootCmd = &cobra.Command{
 	RunE:  run,
 }
 
+func init() {
+	rootCmd.Flags().BoolVar(&testFlag, "test", false, "Show detected User-Agent and parsed cookies, then exit")
+	rootCmd.Args = func(cmd *cobra.Command, args []string) error {
+		if testFlag {
+			return cobra.NoArgs(cmd, args)
+		}
+		return cobra.ExactArgs(1)(cmd, args)
+	}
+}
+
 func run(cmd *cobra.Command, args []string) error {
+	if testFlag {
+		return runTest()
+	}
+
 	slackLink := args[0]
 	ctx := context.Background()
 
@@ -45,6 +62,28 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("encoding output: %w", err)
 	}
 
+	return nil
+}
+
+func runTest() error {
+	cookies, ua, err := sdauth.ReadSafariCookies()
+	if err != nil {
+		return err
+	}
+	if ua == "" {
+		ua = "(Safari not found)"
+	}
+	fmt.Printf("User-Agent: %s\n\n", ua)
+	fmt.Printf("%-30s %-8s %-6s %s\n", "NAME", "SECURE", "HTTP", "VALUE (truncated)")
+	fmt.Printf("%-30s %-8s %-6s %s\n", strings.Repeat("-", 30), "------", "----", strings.Repeat("-", 40))
+	for _, c := range cookies {
+		v := c.Value
+		if len(v) > 40 {
+			v = v[:40] + "..."
+		}
+		fmt.Printf("%-30s %-8v %-6v %s\n", c.Name, c.Secure, c.HttpOnly, v)
+	}
+	fmt.Printf("\nTotal: %d Slack cookies\n", len(cookies))
 	return nil
 }
 
