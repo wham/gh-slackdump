@@ -39,6 +39,32 @@ gh slackdump --test
 | `-o, --output <file>` | Write JSON output to a file instead of stdout. When set, progress is logged to stdout. |
 | `--test` | Show the detected Safari User-Agent and parsed Slack cookies, then exit. Useful for verifying that cookie access is working. |
 
+## Output format
+
+The output follows [Slack's export format](https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports) with slackdump extensions:
+
+```json
+{
+  "channel_id": "C09036MGFJ4",
+  "thread_ts": "1771747003.176409",  // only present for thread links
+  "name": "channel-name",
+  "messages": [
+    {
+      "type": "message",
+      "user": "U09036M8VEU",
+      "text": "Hello",
+      "ts": "1771747003.176409",
+      "reactions": [{ "name": "eyes", "count": 1, "users": ["U09036M8VEU"] }],
+      "slackdump_thread_replies": [
+        { "type": "message", "user": "U09036M8VEU", "text": "Reply", "ts": "..." }
+      ]
+    }
+  ]
+}
+```
+
+Thread replies are nested under `slackdump_thread_replies` on the parent message. Users are identified by ID, not display name.
+
 ## Development & Releasing
 
 Build and run locally (requires Go 1.21+):
