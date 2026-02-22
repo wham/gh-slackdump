@@ -1,6 +1,9 @@
 # gh-slackdump
 
-A [GitHub CLI](https://cli.github.com/) extension that dumps Slack conversations to stdout using [slackdump](https://github.com/rusq/slackdump). Authenticates via Safari cookies with TLS fingerprinting to access the GitHub Slack workspace.
+A [GitHub CLI](https://cli.github.com/) extension that dumps a provided Slack conversation into a [JSON file](https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports). The extension uses [slackdump](https://github.com/rusq/slackdump) under the hood.
+With a [trick](https://github.com/rusq/slackdump/discussions/526#discussioncomment-14370498) to make it work in enterprise Slack workspaces and avoid the [security notifications](https://slack.com/help/articles/37506096763283-Understand-Slack-Security-notifications) followed by sign out.
+
+`gh-slackdump` currently only works on macOS and requires Safari to be signed in to the GitHub Slack workspace, as it relies on Safari's cookie storage for authentication. File an issue to request support for other platforms or browsers.
 
 ## Installation
 
@@ -9,6 +12,8 @@ gh extension install wham/gh-slackdump
 ```
 
 ## Usage
+
+Sign it to your Slack workspace in **Safari** first. `gh-slackdump` will read the necessary cookies from Safari to authenticate with Slack.
 
 ```
 gh slackdump <slack-link>
