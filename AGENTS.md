@@ -9,13 +9,12 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 ## References
 
 - [gh-hubber-skills](https://github.com/github/gh-hubber-skills) — Example of a modern GitHub internal `gh` CLI extension (Go + cobra pattern)
-- [wham/impact](https://github.com/wham/impact) — Example of using slackdump in a Go app with Safari cookie auth and TLS fingerprinting for the GitHub Slack workspace. The cookie auth and TLS tricks in `internal/auth/safari.go` are ported from this project.
+- [wham/impact](https://github.com/wham/impact) — Example of using slackdump in a Go app
 
 ## Architecture
 
 - `main.go` — Entry point with cobra root command, flags (`--test`, `-o`), and `slog`-based logging
 - `internal/auth/desktop.go` — Slack desktop app cookie auth provider: reads the `d` cookie from Slack's SQLite cookie database, decrypts it using the system keychain, and exchanges it for a Slack API token
-- `internal/auth/safari.go` — Legacy Safari cookie auth provider (retained for reference)
 - `scripts/run` — Development script that builds and runs the binary directly
 - `scripts/test` — Runs `go test ./...`
 - `scripts/release` — Release script that bumps the semver tag (patch/minor/major) and pushes it to trigger GoReleaser
