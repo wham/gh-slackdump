@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 )
 
 func TestExtractWorkspaceURL(t *testing.T) {
@@ -57,5 +58,52 @@ func TestVersion(t *testing.T) {
 	}
 	if rootCmd.Version == "" {
 		t.Error("rootCmd.Version should not be empty")
+	}
+}
+
+func TestParseTime(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    time.Time
+		wantErr bool
+	}{
+		{
+			name:  "empty string returns zero time",
+			input: "",
+			want:  time.Time{},
+		},
+		{
+			name:  "RFC3339 timestamp",
+			input: "2024-01-15T10:30:00Z",
+			want:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "date-only YYYY-MM-DD",
+			input: "2024-01-15",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:    "invalid format",
+			input:   "Jan 15 2024",
+			wantErr: true,
+		},
+		{
+			name:    "partial date",
+			input:   "2024-01",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseTime(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("parseTime(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+			if !tt.wantErr && !got.Equal(tt.want) {
+				t.Errorf("parseTime(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
 	}
 }

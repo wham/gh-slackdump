@@ -13,7 +13,7 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 
 ## Architecture
 
-- `main.go` — Entry point with cobra root command, flags (`--test`, `-o`), and `slog`-based logging
+- `main.go` — Entry point with cobra root command, flags (`--test`, `-o`, `--from`, `--to`), and `slog`-based logging
 - `internal/auth/safari.go` — Safari cookie auth provider with uTLS fingerprinting, binary cookie parsing, and Slack token extraction
 - `scripts/run` — Development script that builds and runs the binary directly
 - `scripts/test` — Runs `go test ./...`
@@ -42,3 +42,13 @@ Run unit tests with `scripts/test`. Build and manually test with `scripts/run`. 
 - Thread: https://slack-mdworkspace.slack.com/archives/C09036MGFJ4/p1771747003176409
 - DM: https://slack-mdworkspace.slack.com/archives/D09036MAT96
 - Bot: https://slack-mdworkspace.slack.com/archives/D09036MAB16
+
+Example runs:
+
+```
+scripts/run -o dumps/channel.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4
+scripts/run -o dumps/thread.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4/p1771747003176409
+scripts/run -o dumps/dm.json https://slack-mdworkspace.slack.com/archives/D09036MAT96
+scripts/run --from 2025-06-01 --to 2025-07-01 -o dumps/channel-june.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4
+scripts/run --from 2025-06-15T00:00:00Z --to 2025-06-15T23:59:59Z -o dumps/channel-day.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4
+```
