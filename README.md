@@ -44,8 +44,8 @@ gh slackdump --test
 | Flag | Description |
 |---|---|
 | `-o, --output <file>` | Write JSON output to a file instead of stdout. When set, progress is logged to stdout. |
-| `--from <time>` | Dump only messages after this time. Accepts RFC3339 (e.g. `2024-01-02T15:04:05Z`) or date-only (`2024-01-02`). |
-| `--to <time>` | Dump only messages before this time. Accepts RFC3339 (e.g. `2024-01-31T23:59:59Z`) or date-only (`2024-01-31`). |
+| `--from <time>` | Dump only messages after this time. Accepts RFC3339 (e.g. `2024-01-02T15:04:05Z`) or date-only (`2024-01-02`). Filters by parent message timestamp; thread replies follow their parent. |
+| `--to <time>` | Dump only messages before this time. Accepts RFC3339 (e.g. `2024-01-31T23:59:59Z`) or date-only (`2024-01-31`). Filters by parent message timestamp; thread replies follow their parent. |
 | `--test` | Show the detected Safari User-Agent and parsed Slack cookies, then exit. Useful for verifying that cookie access is working. |
 | `-v, --version` | Print the version number and exit. |
 | `-h, --help` | Show help with all available flags and usage examples. |

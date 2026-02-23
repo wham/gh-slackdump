@@ -36,11 +36,14 @@ and enterprise (*.enterprise.slack.com) workspaces. Authenticates via Safari's
 cookie storage — requires Safari to be signed in to your Slack workspace.
 
 Use --from and --to to restrict the dump to a specific time range. Both flags
-accept RFC3339 timestamps (e.g. 2006-01-02T15:04:05Z) or plain dates
-(e.g. 2006-01-02). When omitted, all messages are dumped.`,
+accept RFC3339 timestamps (e.g. 2024-01-15T09:00:00Z) or plain dates
+(e.g. 2024-01-15, interpreted as midnight UTC). When omitted, all messages
+are dumped. The time range filters by parent message timestamp; thread
+replies are included or excluded together with their parent.`,
 	Example: `  gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
   gh slackdump -o output.json https://myworkspace.enterprise.slack.com/archives/CMH59UX4P
   gh slackdump --from 2024-01-01 --to 2024-01-31 https://myworkspace.slack.com/archives/C09036MGFJ4
+  gh slackdump --from 2024-01-15T09:00:00Z --to 2024-01-15T17:00:00Z https://myworkspace.slack.com/archives/C09036MGFJ4
   gh slackdump --test`,
 	Version:      version,
 	Args:         cobra.ExactArgs(1),
@@ -155,7 +158,7 @@ func parseTime(s string) (time.Time, error) {
 			return t, nil
 		}
 	}
-	return time.Time{}, fmt.Errorf("invalid time %q: use RFC3339 (e.g. 2006-01-02T15:04:05Z) or YYYY-MM-DD", s)
+	return time.Time{}, fmt.Errorf("invalid time %q: use RFC3339 (e.g. 2024-01-15T09:00:00Z) or YYYY-MM-DD", s)
 }
 
 func runTest() error {
