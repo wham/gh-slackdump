@@ -34,6 +34,8 @@ The output is written to stdout by default. Use `-o` to write to a file instead.
 
 ```
 gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
+gh slackdump -u https://myworkspace.slack.com/archives/C09036MGFJ4
+gh slackdump -u -f https://myworkspace.slack.com/archives/C09036MGFJ4
 gh slackdump -o output.json https://myworkspace.enterprise.slack.com/archives/CMH59UX4P
 gh slackdump --from 2024-01-01 --to 2024-01-31 https://myworkspace.slack.com/archives/C09036MGFJ4
 gh slackdump --test
@@ -44,6 +46,8 @@ gh slackdump --test
 | Flag | Description |
 |---|---|
 | `-o, --output <file>` | Write JSON output to a file instead of stdout. When set, progress is logged to stdout. |
+| `-u, --users` | Replace user IDs with Slack handles. Fetches the workspace user list on first use and caches it. |
+| `-f, --force` | Force re-fetch of the cached user list (implies `-u`). |
 | `--from <time>` | Dump only messages after this time. Accepts RFC3339 (e.g. `2024-01-02T15:04:05Z`) or date-only (`2024-01-02`). Filters by parent message timestamp; thread replies follow their parent. |
 | `--to <time>` | Dump only messages before this time. Accepts RFC3339 (e.g. `2024-01-31T23:59:59Z`) or date-only (`2024-01-31`). Filters by parent message timestamp; thread replies follow their parent. |
 | `--test` | Show the detected Safari User-Agent and parsed Slack cookies, then exit. Useful for verifying that cookie access is working. |
@@ -75,6 +79,8 @@ The output follows [Slack's export format](https://slack.com/help/articles/22055
 ```
 
 Thread replies are nested under `slackdump_thread_replies` on the parent message. Users are identified by ID, not display name.
+
+When `-u` is passed, user IDs are replaced with Slack handles everywhere in the JSON — message authors, reactions, thread participants, and `<@mention>` patterns in message text. The workspace user list is fetched once and cached in the gh CLI cache directory (`~/.cache/gh/slackdump/<workspace>/users.json`). Use `-f` to force a re-fetch.
 
 ## Development & Releasing
 

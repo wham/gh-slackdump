@@ -11,6 +11,7 @@ import (
 	"time"
 
 	sdauth "github.com/wham/gh-slackdump/internal/auth"
+	"github.com/wham/gh-slackdump/internal/users"
 
 	"github.com/rusq/slackdump/v3"
 	"github.com/spf13/cobra"
@@ -19,10 +20,12 @@ import (
 var version = "dev"
 
 var (
-	testFlag   bool
-	outputFile string
-	fromTime   string
-	toTime     string
+	testFlag     bool
+	outputFile   string
+	fromTime     string
+	toTime       string
+	resolveUsers bool
+	forceUsers   bool
 )
 
 var rootCmd = &cobra.Command{
@@ -39,8 +42,13 @@ Use --from and --to to restrict the dump to a specific time range. Both flags
 accept RFC3339 timestamps (e.g. 2024-01-15T09:00:00Z) or plain dates
 (e.g. 2024-01-15, interpreted as midnight UTC). When omitted, all messages
 are dumped. The time range filters by parent message timestamp; thread
-replies are included or excluded together with their parent.`,
+replies are included or excluded together with their parent.
+
+Use -u to replace user IDs with Slack handles. The workspace user list is
+fetched once and cached. Use -f to force a re-fetch.`,
 	Example: `  gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
+  gh slackdump -u https://myworkspace.slack.com/archives/C09036MGFJ4
+  gh slackdump -u -f https://myworkspace.slack.com/archives/C09036MGFJ4
   gh slackdump -o output.json https://myworkspace.enterprise.slack.com/archives/CMH59UX4P
   gh slackdump --from 2024-01-01 --to 2024-01-31 https://myworkspace.slack.com/archives/C09036MGFJ4
   gh slackdump --from 2024-01-15T09:00:00Z --to 2024-01-15T17:00:00Z https://myworkspace.slack.com/archives/C09036MGFJ4
@@ -56,6 +64,8 @@ func init() {
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file instead of stdout")
 	rootCmd.Flags().StringVar(&fromTime, "from", "", "Dump messages after this time (RFC3339 or YYYY-MM-DD)")
 	rootCmd.Flags().StringVar(&toTime, "to", "", "Dump messages before this time (RFC3339 or YYYY-MM-DD)")
+	rootCmd.Flags().BoolVarP(&resolveUsers, "users", "u", false, "Replace user IDs with Slack handles (cached per workspace)")
+	rootCmd.Flags().BoolVarP(&forceUsers, "force", "f", false, "Force re-fetch of the user cache (implies -u)")
 	rootCmd.Args = func(cmd *cobra.Command, args []string) error {
 		if testFlag {
 			return cobra.NoArgs(cmd, args)
@@ -107,6 +117,18 @@ func run(cmd *cobra.Command, args []string) error {
 	conv, err := sd.Dump(ctx, slackLink, oldest, latest)
 	if err != nil {
 		return err
+	}
+
+	if forceUsers {
+		resolveUsers = true
+	}
+	if resolveUsers {
+		handleMap, err := users.LoadOrFetch(ctx, sd, workspaceURL, forceUsers)
+		if err != nil {
+			return err
+		}
+		users.ResolveConversation(conv, handleMap)
+		slog.Info("resolved user IDs", "users", len(handleMap))
 	}
 
 	var out *os.File

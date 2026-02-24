@@ -13,8 +13,9 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 
 ## Architecture
 
-- `main.go` — Entry point with cobra root command, flags (`--test`, `-o`, `--from`, `--to`), and `slog`-based logging
+- `main.go` — Entry point with cobra root command, flags (`--test`, `-o`, `--from`, `--to`, `-u`, `-f`), and `slog`-based logging
 - `internal/auth/safari.go` — Safari cookie auth provider with uTLS fingerprinting, binary cookie parsing, and Slack token extraction
+- `internal/users/users.go` — User ID resolution: fetches workspace users via `slackdump.Session.GetUsers`, caches as `users.json` in the gh CLI cache directory, and replaces user IDs with Slack handles throughout the conversation struct
 - `scripts/run` — Development script that builds and runs the binary directly
 - `scripts/test` — Runs `go test ./...`
 - `scripts/release` — Release script that bumps the semver tag (patch/minor/major) and pushes it to trigger GoReleaser
@@ -27,6 +28,7 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 - The User-Agent is detected from the locally installed Safari version
 - `slackdump.WithForceEnterprise(true)` is automatically set when the link is an `*.enterprise.slack.com` URL
 - Logging uses `slog`; suppressed when outputting to stdout, enabled when `-o` is set
+- User cache is stored at `config.CacheDir()/slackdump/<workspace-host>/users.json` using the `go-gh` library's XDG-based cache directory
 
 ## Guidelines
 
@@ -47,6 +49,8 @@ Example runs:
 
 ```
 scripts/run -o dumps/channel.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4
+scripts/run -u -o dumps/channel.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4
+scripts/run -u -f -o dumps/channel.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4
 scripts/run -o dumps/thread.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4/p1771747003176409
 scripts/run -o dumps/dm.json https://slack-mdworkspace.slack.com/archives/D09036MAT96
 scripts/run --from 2025-06-01 --to 2025-07-01 -o dumps/channel-june.json https://slack-mdworkspace.slack.com/archives/C09036MGFJ4
