@@ -3,6 +3,7 @@ module github.com/wham/gh-slackdump
 go 1.25.5
 
 require (
+	github.com/cli/go-gh/v2 v2.13.0
 	github.com/refraction-networking/utls v1.8.2
 	github.com/rusq/slack v0.9.6-0.20250408103104-dd80d1b6337f
 	github.com/rusq/slackdump/v3 v3.1.13
@@ -22,7 +23,7 @@ require (
 	github.com/charmbracelet/colorprofile v0.4.1 // indirect
 	github.com/charmbracelet/huh v0.8.0 // indirect
 	github.com/charmbracelet/huh/spinner v0.0.0-20251215014908-6f7d32faaff3 // indirect
-	github.com/charmbracelet/lipgloss v1.1.0 // indirect
+	github.com/charmbracelet/lipgloss v1.1.1-0.20250319133953-166f707985bc // indirect
 	github.com/charmbracelet/x/ansi v0.11.3 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.14 // indirect
 	github.com/charmbracelet/x/exp/strings v0.0.0-20251215102626-e0db08df7383 // indirect
@@ -81,4 +82,5 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
