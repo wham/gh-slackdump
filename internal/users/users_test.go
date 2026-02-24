@@ -160,3 +160,79 @@ func TestResolveConversationEmptyFields(t *testing.T) {
 		t.Errorf("Inviter should remain empty, got %q", conv.Messages[0].Inviter)
 	}
 }
+
+func TestResolveConversationBlocks(t *testing.T) {
+	m := HandleMap{"U001": "alice", "U002": "bob"}
+
+	sectionBlock := slack.NewSectionBlock(
+		slack.NewTextBlockObject("mrkdwn", "Hello <@U001>!", false, false),
+		[]*slack.TextBlockObject{
+			slack.NewTextBlockObject("mrkdwn", "Field <@U002>", false, false),
+		},
+		nil,
+	)
+
+	conv := &types.Conversation{
+		Messages: []types.Message{
+			{
+				Message: slack.Message{
+					Msg: slack.Msg{
+						User:   "U001",
+						Text:   "Hello <@U001>!",
+						Blocks: slack.Blocks{BlockSet: []slack.Block{sectionBlock}},
+						Attachments: []slack.Attachment{
+							{Text: "att <@U002>", Fallback: "fb <@U001>"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ResolveConversation(conv, m)
+
+	sb := conv.Messages[0].Blocks.BlockSet[0].(*slack.SectionBlock)
+	if sb.Text.Text != "Hello @alice!" {
+		t.Errorf("SectionBlock.Text = %q, want resolved", sb.Text.Text)
+	}
+	if sb.Fields[0].Text != "Field @bob" {
+		t.Errorf("SectionBlock.Fields[0] = %q, want resolved", sb.Fields[0].Text)
+	}
+	att := conv.Messages[0].Attachments[0]
+	if att.Text != "att @bob" {
+		t.Errorf("Attachment.Text = %q, want resolved", att.Text)
+	}
+	if att.Fallback != "fb @alice" {
+		t.Errorf("Attachment.Fallback = %q, want resolved", att.Fallback)
+	}
+}
+
+func TestResolveConversationRichText(t *testing.T) {
+	m := HandleMap{"U001": "alice"}
+
+	userEl := slack.NewRichTextSectionUserElement("U001", nil)
+	section := slack.NewRichTextSection(userEl)
+	richBlock := slack.NewRichTextBlock("blk1", section)
+
+	conv := &types.Conversation{
+		Messages: []types.Message{
+			{
+				Message: slack.Message{
+					Msg: slack.Msg{
+						User:   "U001",
+						Blocks: slack.Blocks{BlockSet: []slack.Block{richBlock}},
+					},
+				},
+			},
+		},
+	}
+
+	ResolveConversation(conv, m)
+
+	rtb := conv.Messages[0].Blocks.BlockSet[0].(*slack.RichTextBlock)
+	rts := rtb.Elements[0].(*slack.RichTextSection)
+	ue := rts.Elements[0].(*slack.RichTextSectionUserElement)
+	if ue.UserID != "alice" {
+		t.Errorf("RichTextSectionUserElement.UserID = %q, want alice", ue.UserID)
+	}
+}

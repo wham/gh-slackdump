@@ -209,14 +209,80 @@ func resolveMsg(msg *slack.Msg, m HandleMap) {
 		}
 	}
 	// Replace <@USERID> mentions in text.
-	if strings.Contains(msg.Text, "<@U") {
-		msg.Text = mentionRe.ReplaceAllStringFunc(msg.Text, func(match string) string {
-			id := mentionRe.FindStringSubmatch(match)[1]
-			if name, ok := m[id]; ok {
-				return "@" + name
+	msg.Text = resolveMentions(msg.Text, m)
+	for i := range msg.Attachments {
+		msg.Attachments[i].Text = resolveMentions(msg.Attachments[i].Text, m)
+		msg.Attachments[i].Pretext = resolveMentions(msg.Attachments[i].Pretext, m)
+		msg.Attachments[i].Fallback = resolveMentions(msg.Attachments[i].Fallback, m)
+		msg.Attachments[i].Footer = resolveMentions(msg.Attachments[i].Footer, m)
+		msg.Attachments[i].AuthorID = resolveIfSet(msg.Attachments[i].AuthorID, m)
+	}
+	resolveBlocks(&msg.Blocks, m)
+}
+
+// resolveMentions replaces <@USERID> patterns in a string with @handle.
+func resolveMentions(s string, m HandleMap) string {
+	if !strings.Contains(s, "<@U") {
+		return s
+	}
+	return mentionRe.ReplaceAllStringFunc(s, func(match string) string {
+		id := mentionRe.FindStringSubmatch(match)[1]
+		if name, ok := m[id]; ok {
+			return "@" + name
+		}
+		return match
+	})
+}
+
+func resolveBlocks(blocks *slack.Blocks, m HandleMap) {
+	for _, b := range blocks.BlockSet {
+		switch blk := b.(type) {
+		case *slack.SectionBlock:
+			resolveTextBlockObject(blk.Text, m)
+			for _, f := range blk.Fields {
+				resolveTextBlockObject(f, m)
 			}
-			return match
-		})
+		case *slack.HeaderBlock:
+			resolveTextBlockObject(blk.Text, m)
+		case *slack.ContextBlock:
+			for _, el := range blk.ContextElements.Elements {
+				if tbo, ok := el.(*slack.TextBlockObject); ok {
+					resolveTextBlockObject(tbo, m)
+				}
+			}
+		case *slack.RichTextBlock:
+			resolveRichTextElements(blk.Elements, m)
+		}
+	}
+}
+
+func resolveTextBlockObject(tbo *slack.TextBlockObject, m HandleMap) {
+	if tbo == nil {
+		return
+	}
+	tbo.Text = resolveMentions(tbo.Text, m)
+}
+
+func resolveRichTextElements(elements []slack.RichTextElement, m HandleMap) {
+	for _, el := range elements {
+		switch rte := el.(type) {
+		case *slack.RichTextSection:
+			resolveRichTextSectionElements(rte.Elements, m)
+		case *slack.RichTextQuote:
+			resolveRichTextSectionElements(rte.Elements, m)
+		case *slack.RichTextPreformatted:
+			resolveRichTextSectionElements(rte.Elements, m)
+		case *slack.RichTextList:
+			resolveRichTextElements(rte.Elements, m)
+		}
+	}
+}
+
+func resolveRichTextSectionElements(elements []slack.RichTextSectionElement, m HandleMap) {
+	for _, el := range elements {
+		if u, ok := el.(*slack.RichTextSectionUserElement); ok {
+			u.UserID = m.resolve(u.UserID)
+		}
 	}
 }
 
