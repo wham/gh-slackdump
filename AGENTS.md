@@ -14,20 +14,25 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 ## Architecture
 
 - `main.go` — Entry point with cobra root command, flags (`--test`, `-o`), and `slog`-based logging
-- `internal/auth/desktop.go` — Slack desktop app cookie auth provider: reads the `d` cookie from Slack's SQLite cookie database, decrypts it using the system keychain, and exchanges it for a Slack API token
+- `internal/auth/safari.go` — Safari binary cookie parser: reads the `d` cookie from Safari's `Cookies.binarycookies` file (macOS only, no Keychain access needed)
+- `internal/auth/desktop.go` — Auth provider with uTLS transport: reads the `d` cookie (Safari first, then Slack desktop app), exchanges it for a Slack API token via slackdump's `auth.NewCookieOnlyAuth`
+- `internal/auth/cookie_password_darwin.go` — macOS Keychain access via `go-keychain` (only needed for Slack desktop app fallback)
+- `internal/auth/cookie_password_linux.go` — Linux Secret Service access via `secret-tool`
 - `scripts/run` — Development script that builds and runs the binary directly
 - `scripts/test` — Runs `go test ./...`
 - `scripts/release` — Release script that bumps the semver tag (patch/minor/major) and pushes it to trigger GoReleaser
 
 ## Key Implementation Details
 
-- Authentication reads the Slack desktop app's cookie database (SQLite), decrypts the `d` cookie using the system keychain password, and exchanges it for a Slack API token via the workspace homepage
+- Authentication tries Safari's cookie file first (macOS, no Keychain prompt), then falls back to the Slack desktop app's cookie database (requires Keychain/Secret Service access)
+- The `d` cookie is exchanged for a Slack API token via slackdump's `auth.NewCookieOnlyAuth`
 - The approach is based on how [gh-slack](https://github.com/rneatherway/gh-slack) handles auth via the [rneatherway/slack](https://github.com/rneatherway/slack) library
 - On macOS, the cookie password is retrieved from the Keychain (`Slack Safe Storage`) using the `security` CLI
 - On Linux, the cookie password is retrieved from the Secret Service using `secret-tool`
 - Cookie decryption uses PBKDF2 + AES-CBC (Chromium's cookie encryption scheme)
 - Handles Chromium's domain hash prefix (added in Chromium 128+) by stripping SHA256 domain hashes
 - The workspace URL is derived from the Slack link provided by the user
+- TLS connections use [uTLS](https://github.com/refraction-networking/utls) with `HelloSafari_Auto` to mimic Safari's TLS fingerprint
 - `slackdump.WithForceEnterprise(true)` is automatically set when the link is an `*.enterprise.slack.com` URL
 - Logging uses `slog`; suppressed when outputting to stdout, enabled when `-o` is set
 

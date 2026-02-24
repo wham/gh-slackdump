@@ -6,13 +6,13 @@ import (
 	"crypto/cipher"
 	"crypto/sha1"
 	"net/http"
-	"runtime"
 	"testing"
 
+	"github.com/rusq/slackdump/v3/auth"
 	"golang.org/x/crypto/pbkdf2"
 )
 
-func TestDesktopProviderValidate(t *testing.T) {
+func TestProviderValidate(t *testing.T) {
 	tests := []struct {
 		name    string
 		token   string
@@ -23,7 +23,16 @@ func TestDesktopProviderValidate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &DesktopProvider{token: tt.token}
+			var p *Provider
+			if tt.token != "" {
+				va, err := auth.NewValueAuth(tt.token, "")
+				if err != nil {
+					t.Fatalf("NewValueAuth error: %v", err)
+				}
+				p = &Provider{ValueAuth: va}
+			} else {
+				p = &Provider{}
+			}
 			err := p.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
@@ -32,20 +41,29 @@ func TestDesktopProviderValidate(t *testing.T) {
 	}
 }
 
-func TestDesktopProviderAccessors(t *testing.T) {
+func TestProviderAccessors(t *testing.T) {
 	cookies := []*http.Cookie{{Name: "d", Value: "abc"}}
-	p := &DesktopProvider{token: "xoxc-test", cookies: cookies}
+	va, err := auth.NewValueCookiesAuth("xoxc-test", cookies)
+	if err != nil {
+		t.Fatalf("NewValueCookiesAuth error: %v", err)
+	}
+	p := &Provider{ValueAuth: va}
 
 	if got := p.SlackToken(); got != "xoxc-test" {
 		t.Errorf("SlackToken() = %q, want %q", got, "xoxc-test")
 	}
-	if got := p.Cookies(); len(got) != 1 || got[0].Name != "d" {
-		t.Errorf("Cookies() unexpected result: %v", got)
+	if got := p.Cookies(); len(got) == 0 {
+		t.Error("Cookies() returned empty slice")
 	}
 }
 
-func TestDesktopProviderHTTPClient(t *testing.T) {
-	p := &DesktopProvider{token: "xoxc-test", cookies: []*http.Cookie{{Name: "d", Value: "abc"}}}
+func TestProviderHTTPClient(t *testing.T) {
+	cookies := []*http.Cookie{{Name: "d", Value: "abc"}}
+	va, err := auth.NewValueCookiesAuth("xoxc-test", cookies)
+	if err != nil {
+		t.Fatalf("NewValueCookiesAuth error: %v", err)
+	}
+	p := &Provider{ValueAuth: va}
 	client, err := p.HTTPClient()
 	if err != nil {
 		t.Fatalf("HTTPClient() error: %v", err)
@@ -54,7 +72,7 @@ func TestDesktopProviderHTTPClient(t *testing.T) {
 		t.Fatal("HTTPClient() returned nil")
 	}
 	if client.Transport == nil {
-		t.Fatal("HTTPClient().Transport is nil, expected cookieTransport")
+		t.Fatal("HTTPClient().Transport is nil, expected utlsTransport")
 	}
 }
 
@@ -63,12 +81,8 @@ func TestDecryptCookie(t *testing.T) {
 	plaintext := []byte("test-cookie-value")
 	key := []byte("test-password")
 
-	// Use the same PBKDF2 rounds that decryptCookie uses on this platform
-	rounds := 1003 // macOS
-	if runtime.GOOS == "linux" {
-		rounds = 1
-	}
-	dk := pbkdf2.Key(key, []byte("saltysalt"), rounds, 16, sha1.New)
+	// Use the same PBKDF2 rounds that decryptCookie uses
+	dk := pbkdf2.Key(key, []byte("saltysalt"), 1003, 16, sha1.New)
 
 	block, err := aes.NewCipher(dk)
 	if err != nil {

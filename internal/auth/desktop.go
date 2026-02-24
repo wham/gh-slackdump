@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/aes"
@@ -11,84 +12,205 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
-	"strings"
+	"time"
 
+	utls "github.com/refraction-networking/utls"
 	"github.com/rusq/slack"
 	"github.com/rusq/slackdump/v3/auth"
 	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/publicsuffix"
 	_ "modernc.org/sqlite"
 )
 
-// DesktopProvider implements auth.Provider by reading authentication
-// from the Slack desktop app's local cookie database. This approach
-// is based on how gh-slack (github.com/rneatherway/gh-slack) handles
-// authentication.
-type DesktopProvider struct {
-	token   string
-	cookies []*http.Cookie
+// Provider wraps slackdump's ValueAuth with uTLS fingerprinting
+// to mimic Safari's TLS fingerprint.
+type Provider struct {
+	auth.ValueAuth
 }
 
-func (p *DesktopProvider) SlackToken() string     { return p.token }
-func (p *DesktopProvider) Cookies() []*http.Cookie { return p.cookies }
-func (p *DesktopProvider) Validate() error {
-	if p.token == "" {
-		return auth.ErrNoToken
+func (p *Provider) HTTPClient() (*http.Client, error) {
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	if err != nil {
+		return nil, err
 	}
-	return nil
-}
-
-func (p *DesktopProvider) HTTPClient() (*http.Client, error) {
+	u, _ := url.Parse(auth.SlackURL)
+	jar.SetCookies(u, p.Cookies())
 	return &http.Client{
-		Transport: &cookieTransport{cookies: p.cookies},
+		Jar:       jar,
+		Transport: &utlsTransport{h2: &http2.Transport{}},
 	}, nil
 }
 
-func (p *DesktopProvider) Test(ctx context.Context) (*slack.AuthTestResponse, error) {
+func (p *Provider) Test(ctx context.Context) (*slack.AuthTestResponse, error) {
 	cl, err := p.HTTPClient()
 	if err != nil {
 		return nil, err
 	}
-	return slack.New(p.token, slack.OptionHTTPClient(cl)).AuthTestContext(ctx)
+	return slack.New(p.SlackToken(), slack.OptionHTTPClient(cl)).AuthTestContext(ctx)
 }
 
-// cookieTransport adds cookies to every outgoing request.
-type cookieTransport struct {
-	cookies []*http.Cookie
+// utlsTransport uses uTLS to mimic Safari's TLS fingerprint.
+type utlsTransport struct {
+	h2 *http2.Transport
 }
 
-func (t *cookieTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	r := req.Clone(req.Context())
-	for _, c := range t.cookies {
-		r.AddCookie(c)
+func (t *utlsTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	addr := req.URL.Host
+	if req.URL.Port() == "" {
+		addr += ":443"
 	}
-	return http.DefaultTransport.RoundTrip(r)
-}
 
-// NewDesktopProvider creates a new auth provider by reading the Slack desktop
-// app's cookie and exchanging it for a Slack API token.
-func NewDesktopProvider(ctx context.Context, workspaceURL string) (*DesktopProvider, error) {
-	cookie, err := ReadDesktopCookie()
+	conn, err := net.DialTimeout("tcp", addr, 30*time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("reading Slack desktop cookie: %w", err)
+		return nil, err
 	}
 
-	token, cookies, err := exchangeCookieForToken(workspaceURL, cookie)
+	tlsConn := utls.UClient(conn, &utls.Config{ServerName: req.URL.Hostname()}, utls.HelloSafari_Auto)
+	if err := tlsConn.Handshake(); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	if tlsConn.ConnectionState().NegotiatedProtocol == "h2" {
+		cc, err := t.h2.NewClientConn(tlsConn)
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
+		return cc.RoundTrip(req)
+	}
+
+	if err := req.Write(conn); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(conn), req)
 	if err != nil {
-		return nil, fmt.Errorf("exchanging cookie for token: %w", err)
+		conn.Close()
+		return nil, err
 	}
-
-	return &DesktopProvider{token: token, cookies: cookies}, nil
+	return resp, nil
 }
 
-// ReadDesktopCookie reads and decrypts the Slack "d" cookie from the
+// NewProvider creates a new auth provider by reading the Slack "d" cookie
+// and exchanging it for a Slack API token. Tries Safari first, then the
+// Slack desktop app. If a cookie is found but doesn't work for the target
+// workspace, falls back to the next source.
+// All connections use uTLS to mimic Safari's TLS fingerprint.
+func NewProvider(ctx context.Context, workspaceURL string) (*Provider, error) {
+	type cookieSource struct {
+		name string
+		read func() (string, error)
+	}
+	sources := []cookieSource{
+		{"Safari", readSafariCookie},
+		{"Slack desktop app", readDesktopCookie},
+	}
+
+	var lastErr error
+	for _, src := range sources {
+		cookie, err := src.read()
+		if err != nil {
+			slog.Info("cookie not available", "source", src.name, "error", err)
+			continue
+		}
+		if cookie == "" {
+			slog.Info("cookie not found for slack.com", "source", src.name)
+			continue
+		}
+
+		slog.Info("trying cookie", "source", src.name)
+		token, err := exchangeCookieForToken(workspaceURL, cookie)
+		if err != nil {
+			slog.Info("cookie did not work for workspace", "source", src.name, "error", err)
+			lastErr = err
+			continue
+		}
+
+		slog.Info("authenticated", "source", src.name)
+		va, err := auth.NewValueAuth(token, cookie)
+		if err != nil {
+			return nil, fmt.Errorf("creating auth: %w", err)
+		}
+		return &Provider{ValueAuth: va}, nil
+	}
+
+	if lastErr != nil {
+		return nil, fmt.Errorf("no cookie worked for this workspace: %w", lastErr)
+	}
+	return nil, errors.New("no Slack cookies found — sign in to Slack in Safari or the Slack desktop app")
+}
+
+var apiTokenRE = regexp.MustCompile(`"api_token":"([^"]+)"`)
+
+// exchangeCookieForToken exchanges a Slack "d" cookie for an API token
+// by hitting the workspace URL through uTLS.
+func exchangeCookieForToken(workspaceURL, cookie string) (string, error) {
+	req, err := http.NewRequest("GET", workspaceURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.AddCookie(&http.Cookie{Name: "d", Value: cookie})
+
+	client := &http.Client{
+		Transport: &utlsTransport{h2: &http2.Transport{}},
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("status code %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	matches := apiTokenRE.FindSubmatch(body)
+	if len(matches) < 2 {
+		return "", errors.New("api token not found in response")
+	}
+
+	return string(matches[1]), nil
+}
+
+// ReadCookie reads the Slack "d" cookie, trying Safari first,
+// then falling back to the Slack desktop app's cookie database.
+func ReadCookie() (string, error) {
+	cookie, err := readSafariCookie()
+	if err != nil {
+		slog.Info("Safari cookie not available", "error", err)
+	} else if cookie != "" {
+		slog.Info("using Safari cookie")
+		return cookie, nil
+	} else {
+		slog.Info("Safari cookie not found for slack.com")
+	}
+
+	slog.Info("trying Slack desktop app")
+	cookie, err = readDesktopCookie()
+	if err != nil {
+		return "", err
+	}
+	slog.Info("using Slack desktop cookie")
+	return cookie, nil
+}
+
+// readDesktopCookie reads and decrypts the Slack "d" cookie from the
 // Slack desktop app's local cookie database.
-func ReadDesktopCookie() (string, error) {
+func readDesktopCookie() (string, error) {
 	dbPath, err := slackCookieDBPath()
 	if err != nil {
 		return "", err
@@ -135,57 +257,9 @@ func ReadDesktopCookie() (string, error) {
 	return string(decrypted), nil
 }
 
-var apiTokenRE = regexp.MustCompile(`"api_token":"([^"]+)"`)
-
-func exchangeCookieForToken(workspaceURL, cookie string) (string, []*http.Cookie, error) {
-	req, err := http.NewRequest("GET", workspaceURL, nil)
-	if err != nil {
-		return "", nil, err
-	}
-	req.AddCookie(&http.Cookie{Name: "d", Value: cookie})
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", nil, fmt.Errorf("status code %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil, err
-	}
-
-	matches := apiTokenRE.FindSubmatch(body)
-	if len(matches) < 2 {
-		return "", nil, errors.New("api token not found in response")
-	}
-
-	token := string(matches[1])
-	cookies := []*http.Cookie{{Name: "d", Value: cookie}}
-
-	// Include any additional cookies from the response
-	for _, c := range resp.Cookies() {
-		if c.Name != "d" {
-			cookies = append(cookies, c)
-		}
-	}
-
-	return token, cookies, nil
-}
-
 // decryptCookie decrypts a Chromium-encrypted cookie value using PBKDF2 + AES-CBC.
-// This works for macOS (1003 PBKDF2 rounds) and Linux (1 round).
 func decryptCookie(value, key []byte) ([]byte, error) {
-	rounds := 1003 // macOS default
-	if runtime.GOOS == "linux" {
-		rounds = 1
-	}
-
-	dk := pbkdf2.Key(key, []byte("saltysalt"), rounds, 16, sha1.New)
+	dk := pbkdf2.Key(key, []byte("saltysalt"), 1003, 16, sha1.New)
 
 	block, err := aes.NewCipher(dk)
 	if err != nil {
@@ -238,9 +312,6 @@ func slackCookieDBPath() (string, error) {
 	}
 
 	cookieFile := filepath.Join(dir, "Cookies")
-	if runtime.GOOS == "windows" {
-		cookieFile = filepath.Join(dir, "Network", "Cookies")
-	}
 
 	if _, err := os.Stat(cookieFile); err != nil {
 		return "", fmt.Errorf("Slack cookie database not found at %s — is the Slack desktop app installed and signed in?", cookieFile)
@@ -256,61 +327,11 @@ func slackConfigDir() (string, error) {
 		return "", err
 	}
 
-	switch runtime.GOOS {
-	case "darwin":
-		first := filepath.Join(home, "Library", "Application Support", "Slack")
-		second := filepath.Join(home, "Library", "Containers", "com.tinyspeck.slackmacgap", "Data", "Library", "Application Support", "Slack")
-		if _, err := os.Stat(first); err == nil {
-			return first, nil
-		}
-		return second, nil
-	case "linux":
-		if xdgConfigHome, found := os.LookupEnv("XDG_CONFIG_HOME"); found {
-			return filepath.Join(xdgConfigHome, "Slack"), nil
-		}
-		return filepath.Join(home, ".config", "Slack"), nil
-	case "windows":
-		return filepath.Join(os.Getenv("APPDATA"), "Slack"), nil
-	default:
-		return "", fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+	first := filepath.Join(home, "Library", "Application Support", "Slack")
+	second := filepath.Join(home, "Library", "Containers", "com.tinyspeck.slackmacgap", "Data", "Library", "Application Support", "Slack")
+	if _, err := os.Stat(first); err == nil {
+		return first, nil
 	}
+	return second, nil
 }
 
-// cookiePassword retrieves the encryption key for Slack's cookie database
-// from the system's secret storage.
-func cookiePassword() ([]byte, error) {
-	switch runtime.GOOS {
-	case "darwin":
-		return cookiePasswordDarwin()
-	case "linux":
-		return cookiePasswordLinux()
-	default:
-		return nil, fmt.Errorf("cookie decryption not supported on %s", runtime.GOOS)
-	}
-}
-
-func cookiePasswordDarwin() ([]byte, error) {
-	accountNames := []string{"Slack Key", "Slack", "Slack App Store Key"}
-	for _, name := range accountNames {
-		out, err := exec.Command("security", "find-generic-password",
-			"-s", "Slack Safe Storage",
-			"-a", name,
-			"-w",
-		).Output()
-		if err == nil {
-			return []byte(strings.TrimSpace(string(out))), nil
-		}
-	}
-	return nil, fmt.Errorf("could not find Slack cookie password in Keychain")
-}
-
-func cookiePasswordLinux() ([]byte, error) {
-	out, err := exec.Command("secret-tool", "lookup",
-		"xdg:schema", "chrome_libsecret_os_crypt_password_v2",
-		"application", "Slack",
-	).Output()
-	if err != nil {
-		return nil, fmt.Errorf("could not get Slack cookie password from secret service: %w", err)
-	}
-	return []byte(strings.TrimSpace(string(out))), nil
-}

@@ -28,9 +28,9 @@ var rootCmd = &cobra.Command{
 to stdout in Slack's JSON export format.
 
 Supports channels, threads, and direct messages in both regular (*.slack.com)
-and enterprise (*.enterprise.slack.com) workspaces. Authenticates via the
-Slack desktop app's local cookie storage — requires the Slack desktop app to
-be installed and signed in to your workspace.`,
+and enterprise (*.enterprise.slack.com) workspaces. Authenticates via Safari's
+cookie storage (macOS) or the Slack desktop app's local cookie storage —
+requires Safari or the Slack desktop app to be signed in to your workspace.`,
 	Example: `  gh slackdump https://myworkspace.slack.com/archives/C09036MGFJ4
   gh slackdump -o output.json https://myworkspace.enterprise.slack.com/archives/CMH59UX4P
   gh slackdump --test`,
@@ -41,7 +41,7 @@ be installed and signed in to your workspace.`,
 }
 
 func init() {
-	rootCmd.Flags().BoolVar(&testFlag, "test", false, "Show detected Slack desktop cookie, then exit")
+	rootCmd.Flags().BoolVar(&testFlag, "test", false, "Show detected Slack cookie source and value, then exit")
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file instead of stdout")
 	rootCmd.Args = func(cmd *cobra.Command, args []string) error {
 		if testFlag {
@@ -71,7 +71,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	slog.Info("authenticating", "workspace", workspaceURL)
-	provider, err := sdauth.NewDesktopProvider(ctx, workspaceURL)
+	provider, err := sdauth.NewProvider(ctx, workspaceURL)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func extractWorkspaceURL(slackLink string) (string, error) {
 }
 
 func runTest() error {
-	cookie, err := sdauth.ReadDesktopCookie()
+	cookie, err := sdauth.ReadCookie()
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func runTest() error {
 	if len(v) > 40 {
 		v = v[:40] + "..."
 	}
-	slog.Info("slack desktop", "cookie", v)
+	slog.Info("cookie", "value", v)
 	return nil
 }
 

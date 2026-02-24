@@ -2,7 +2,7 @@
 
 A [GitHub CLI](https://cli.github.com/) extension that dumps Slack conversations into Slack's [JSON export format](https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports) using [slackdump](https://github.com/rusq/slackdump). Inspired by [gh-slack](https://github.com/rneatherway/gh-slack), but can export entire channels and DMs, not just threads.
 
-It authenticates via the Slack desktop app's local cookie storage, using the same approach as [gh-slack](https://github.com/rneatherway/gh-slack). Requires the Slack desktop app to be installed and signed in to your Slack workspace. Works on macOS and Linux.
+It authenticates via Safari's cookie storage (macOS) or the Slack desktop app's local cookie storage, using the same approach as [gh-slack](https://github.com/rneatherway/gh-slack). Uses [TLS fingerprinting](https://github.com/rusq/slackdump/discussions/526#discussioncomment-14370498) to work with enterprise Slack workspaces without triggering [security notifications](https://slack.com/help/articles/37506096763283-Understand-Slack-Security-notifications). Requires Safari or the Slack desktop app to be signed in to your Slack workspace.
 
 ## Installation
 
@@ -18,7 +18,7 @@ gh extension upgrade wham/gh-slackdump
 
 ## Usage
 
-Sign in to your Slack workspace in the **Slack desktop app** first.
+Sign in to your Slack workspace in **Safari** or the **Slack desktop app** first.
 
 ```
 gh slackdump <slack-link>
@@ -43,7 +43,7 @@ gh slackdump --test
 | Flag | Description |
 |---|---|
 | `-o, --output <file>` | Write JSON output to a file instead of stdout. When set, progress is logged to stdout. |
-| `--test` | Show the detected Slack desktop cookie, then exit. Useful for verifying that cookie access is working. |
+| `--test` | Show the detected Slack cookie source and value, then exit. Useful for verifying that cookie access is working. |
 | `-v, --version` | Print the version number and exit. |
 | `-h, --help` | Show help with all available flags and usage examples. |
 
