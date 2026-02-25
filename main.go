@@ -35,8 +35,9 @@ var rootCmd = &cobra.Command{
 to stdout in Slack's JSON export format.
 
 Supports channels, threads, and direct messages in both regular (*.slack.com)
-and enterprise (*.enterprise.slack.com) workspaces. Authenticates via Safari's
-cookie storage — requires Safari to be signed in to your Slack workspace.
+and enterprise (*.enterprise.slack.com) workspaces. Authenticates via the Slack
+desktop app's local cookie storage — requires the Slack desktop app to be
+signed in to your workspace.
 
 Use --from and --to to restrict the dump to a specific time range. Both flags
 accept RFC3339 timestamps (e.g. 2024-01-15T09:00:00Z) or plain dates
@@ -60,7 +61,7 @@ fetched once and cached. Use -f to force a re-fetch.`,
 }
 
 func init() {
-	rootCmd.Flags().BoolVar(&testFlag, "test", false, "Show detected User-Agent and parsed cookies, then exit")
+	rootCmd.Flags().BoolVar(&testFlag, "test", false, "Show detected Slack cookie source and value, then exit")
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file instead of stdout")
 	rootCmd.Flags().StringVar(&fromTime, "from", "", "Dump messages after this time (RFC3339 or YYYY-MM-DD)")
 	rootCmd.Flags().StringVar(&toTime, "to", "", "Dump messages before this time (RFC3339 or YYYY-MM-DD)")
@@ -94,7 +95,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	slog.Info("authenticating", "workspace", workspaceURL)
-	provider, err := sdauth.NewSafariProvider(ctx, workspaceURL)
+	provider, err := sdauth.NewProvider(ctx, workspaceURL)
 	if err != nil {
 		return err
 	}
@@ -184,22 +185,15 @@ func parseTime(s string) (time.Time, error) {
 }
 
 func runTest() error {
-	cookies, ua, err := sdauth.ReadSafariCookies()
+	cookie, err := sdauth.ReadCookie()
 	if err != nil {
 		return err
 	}
-	if ua == "" {
-		ua = "(Safari not found)"
+	v := cookie
+	if len(v) > 40 {
+		v = v[:40] + "..."
 	}
-	slog.Info("safari", "user-agent", ua)
-	for _, c := range cookies {
-		v := c.Value
-		if len(v) > 40 {
-			v = v[:40] + "..."
-		}
-		slog.Info("cookie", "name", c.Name, "secure", c.Secure, "httponly", c.HttpOnly, "value", v)
-	}
-	slog.Info("total", "cookies", len(cookies))
+	slog.Info("cookie", "value", v)
 	return nil
 }
 

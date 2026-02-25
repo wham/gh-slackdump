@@ -9,12 +9,13 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 ## References
 
 - [gh-hubber-skills](https://github.com/github/gh-hubber-skills) — Example of a modern GitHub internal `gh` CLI extension (Go + cobra pattern)
-- [wham/impact](https://github.com/wham/impact) — Example of using slackdump in a Go app with Safari cookie auth and TLS fingerprinting for the GitHub Slack workspace. The cookie auth and TLS tricks in `internal/auth/safari.go` are ported from this project.
+- [wham/impact](https://github.com/wham/impact) — Example of using slackdump in a Go app
 
 ## Architecture
 
 - `main.go` — Entry point with cobra root command, flags (`--test`, `-o`, `--from`, `--to`, `-u`, `-f`), and `slog`-based logging
-- `internal/auth/safari.go` — Safari cookie auth provider with uTLS fingerprinting, binary cookie parsing, and Slack token extraction
+- `internal/auth/desktop.go` — Auth provider with uTLS transport: reads the `d` cookie from the Slack desktop app's cookie database, exchanges it for a Slack API token
+- `internal/auth/cookie_password_darwin.go` — macOS Keychain access via `go-keychain` for decrypting the Slack desktop app's cookie
 - `internal/users/users.go` — User ID resolution: fetches workspace users via `slackdump.Session.GetUsers`, caches as `users.json` in the gh CLI cache directory, and replaces user IDs with Slack handles throughout the conversation struct
 - `scripts/run` — Development script that builds and runs the binary directly
 - `scripts/test` — Runs `go test ./...`
@@ -22,10 +23,14 @@ This is a GH CLI extension similar to [gh-slack](https://github.com/rneatherway/
 
 ## Key Implementation Details
 
-- Authentication reads Safari's `Cookies.binarycookies` file and exchanges cookies for a Slack API token via the `/ssb/redirect` endpoint
+- Authentication reads the `d` cookie from the Slack desktop app's SQLite cookie database (Chromium-based)
+- The `d` cookie is exchanged for a Slack API token by fetching the workspace URL and extracting `api_token` from the response
+- The approach is based on how [gh-slack](https://github.com/rneatherway/gh-slack) handles auth via the [rneatherway/slack](https://github.com/rneatherway/slack) library
+- On macOS, the cookie password is retrieved from the Keychain (`Slack Safe Storage`) using `go-keychain`
+- Cookie decryption uses PBKDF2 + AES-CBC (Chromium's cookie encryption scheme)
+- Handles Chromium's domain hash prefix (added in Chromium 128+) by stripping SHA256 domain hashes
 - The workspace URL is derived from the Slack link provided by the user
 - TLS connections use [uTLS](https://github.com/refraction-networking/utls) with `HelloSafari_Auto` to mimic Safari's TLS fingerprint
-- The User-Agent is detected from the locally installed Safari version
 - `slackdump.WithForceEnterprise(true)` is automatically set when the link is an `*.enterprise.slack.com` URL
 - Logging uses `slog`; suppressed when outputting to stdout, enabled when `-o` is set
 - User cache is stored at `config.CacheDir()/slackdump/<workspace-host>/users.json` using the `go-gh` library's XDG-based cache directory
