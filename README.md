@@ -2,7 +2,7 @@
 
 A [GitHub CLI](https://cli.github.com/) extension that dumps Slack conversations into Slack's [JSON export format](https://slack.com/help/articles/220556107-How-to-read-Slack-data-exports) using [slackdump](https://github.com/rusq/slackdump). Inspired by [gh-slack](https://github.com/rneatherway/gh-slack), but can export entire channels and DMs, not just threads.
 
-It authenticates via Safari's cookie storage and uses [TLS fingerprinting](https://github.com/rusq/slackdump/discussions/526#discussioncomment-14370498) to work with enterprise Slack workspaces without triggering [security notifications](https://slack.com/help/articles/37506096763283-Understand-Slack-Security-notifications). Currently macOS-only — requires Safari to be signed in to your Slack workspace.
+It authenticates via the Slack desktop app's local cookie storage and uses [TLS fingerprinting](https://github.com/rusq/slackdump/discussions/526#discussioncomment-14370498) to work with enterprise Slack workspaces without triggering [security notifications](https://slack.com/help/articles/37506096763283-Understand-Slack-Security-notifications). Currently macOS-only — requires the Slack desktop app to be signed in to your Slack workspace.
 
 ## Installation
 
@@ -18,7 +18,9 @@ gh extension upgrade wham/gh-slackdump
 
 ## Usage
 
-Sign in to your Slack workspace in **Safari** first.
+Sign in to your Slack workspace in the **Slack desktop app** first. On first run, macOS will prompt for Keychain access — click **Allow** or **Always Allow**.
+
+<img src="docs/keychain.png" alt="Keychain access prompt" width="300">
 
 ```
 gh slackdump <slack-link>
@@ -50,7 +52,7 @@ gh slackdump --test
 | `-f, --force` | Force re-fetch of the cached user list (implies `-u`). |
 | `--from <time>` | Dump only messages after this time. Accepts RFC3339 (e.g. `2024-01-02T15:04:05Z`) or date-only (`2024-01-02`). Filters by parent message timestamp; thread replies follow their parent. |
 | `--to <time>` | Dump only messages before this time. Accepts RFC3339 (e.g. `2024-01-31T23:59:59Z`) or date-only (`2024-01-31`). Filters by parent message timestamp; thread replies follow their parent. |
-| `--test` | Show the detected Safari User-Agent and parsed Slack cookies, then exit. Useful for verifying that cookie access is working. |
+| `--test` | Show the detected Slack cookie source and value, then exit. Useful for verifying that cookie access is working. |
 | `-v, --version` | Print the version number and exit. |
 | `-h, --help` | Show help with all available flags and usage examples. |
 
